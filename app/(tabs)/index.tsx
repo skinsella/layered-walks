@@ -11,41 +11,49 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link, useRouter } from 'expo-router';
 
-import { fetchPublishedTours, fetchThemes } from '@/features/catalog/queries';
+import { fetchActiveCities, fetchPublishedTours, fetchThemes } from '@/features/catalog/queries';
 import { LensChip } from '@/components/LensChip';
 import { TourCard } from '@/components/TourCard';
 import type { Theme, TourCard as TourCardModel } from '@/types/database';
 import { colors } from '@/theme/colors';
 import { fonts, typeScale } from '@/theme/typography';
 
-// MVP launches with a single active city (Limerick). Replace with the real id read
-// from the `cities` table (see docs/06 — known scaffold gap).
-const LIMERICK_PLACEHOLDER = 'REPLACE_WITH_CITY_ID_FROM_DB';
-
 export default function Discover() {
   const router = useRouter();
+  const [cityId, setCityId] = useState<string | undefined>();
+  const [cityName, setCityName] = useState('Limerick');
   const [themes, setThemes] = useState<Theme[]>([]);
   const [tours, setTours] = useState<TourCardModel[]>([]);
   const [activeLens, setActiveLens] = useState<Theme | undefined>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Resolve the active launch city (Limerick at MVP) from the DB — no hard-coded id.
   useEffect(() => {
+    fetchActiveCities()
+      .then((cities) => {
+        if (cities[0]) {
+          setCityId(cities[0].id);
+          setCityName(cities[0].name);
+        }
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load cities'));
     fetchThemes().then(setThemes).catch(() => {});
   }, []);
 
   useEffect(() => {
+    if (!cityId) return;
     setLoading(true);
-    fetchPublishedTours(LIMERICK_PLACEHOLDER, activeLens?.id)
+    fetchPublishedTours(cityId, activeLens?.id)
       .then(setTours)
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'))
       .finally(() => setLoading(false));
-  }, [activeLens]);
+  }, [cityId, activeLens]);
 
   // The section voice changes with the active lens (docs/06 §2).
   const sectionTitle = activeLens
-    ? `Limerick through ${activeLens.name}`
-    : 'Featured in Limerick';
+    ? `${cityName} through ${activeLens.name}`
+    : `Featured in ${cityName}`;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -57,7 +65,7 @@ export default function Discover() {
         ListHeaderComponent={
           <View style={styles.header}>
             <View style={styles.topRow}>
-              <Text style={styles.wordmark}>Limerick</Text>
+              <Text style={styles.wordmark}>{cityName}</Text>
               <Link href="/(tabs)/profile" asChild>
                 <Pressable>
                   <Text style={styles.profileLink}>◐</Text>

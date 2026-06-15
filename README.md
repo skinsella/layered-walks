@@ -64,6 +64,22 @@ npm start                       # then press i / a, or scan with Expo Go (dev bu
 > Native modules (`@rnmapbox/maps`, `@stripe/stripe-react-native`) require an **EAS dev
 > build**, not plain Expo Go. `npx eas build --profile development`.
 
+### Run with real data (local Supabase)
+
+`npx supabase start` (step 3) applies the migrations **and** `supabase/seed.sql`, which seeds
+Limerick, the seven lenses, a demo creator, and **three published flagship tours with stops**.
+Then point the app at the local stack — copy the **API URL** and **anon key** that
+`supabase start` prints into `.env`:
+
+```
+EXPO_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+EXPO_PUBLIC_SUPABASE_ANON_KEY=<anon key printed by `supabase start`>
+```
+
+Discover resolves the active city from the `cities` table (no hard-coded id) and lists the
+seeded published tours through the public RLS path; tapping a lens re-filters via `tour_themes`.
+A test creator login is seeded: `creator@demo.layeredwalks.test` / `walkme123`.
+
 ## Project structure
 
 ```
