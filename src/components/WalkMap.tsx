@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
+import { Image, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import Svg, { Circle, G, Polyline, Text as SvgText } from 'react-native-svg';
 
 import { colors, field as fieldColors } from '@/theme/colors';
 import { fonts } from '@/theme/typography';
+import { hasMapboxToken, mapboxStaticUrl } from '@/features/maps/mapboxStatic';
 
 export type GeoPoint = { lng: number; lat: number };
 export type MapStop = GeoPoint & { locked?: boolean };
@@ -76,12 +77,33 @@ export function WalkMap({
       })
       .join(' ');
 
+  // Real Mapbox streets when a token is set; otherwise the SVG schematic below.
+  const mapboxUrl =
+    hasMapboxToken() && w > 0
+      ? mapboxStaticUrl({
+          path: path ?? (stops.length > 1 ? stops : undefined),
+          markers: stops.map((s, i) => ({
+            lng: s.lng,
+            lat: s.lat,
+            label: String(i + 1),
+            color: s.locked ? (field ? fieldColors.textMuted : colors.textMuted) : accent,
+          })),
+          current,
+          width: w,
+          height,
+          dark: field,
+        })
+      : null;
+
   return (
     <View
       onLayout={(e: LayoutChangeEvent) => setW(e.nativeEvent.layout.width)}
       style={[styles.wrap, { height, backgroundColor: surface, borderColor: border }]}
     >
-      {proj && w > 0 && (
+      {mapboxUrl ? (
+        <Image source={{ uri: mapboxUrl }} style={{ width: w, height }} resizeMode="cover" />
+      ) : (
+        proj && w > 0 && (
         <Svg width={w} height={height}>
           {/* the walked track (breadcrumb) */}
           {path && path.length > 1 && (
@@ -144,7 +166,8 @@ export function WalkMap({
                 </G>
               );
             })()}
-        </Svg>
+          </Svg>
+        )
       )}
     </View>
   );

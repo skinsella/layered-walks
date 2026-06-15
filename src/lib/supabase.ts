@@ -7,21 +7,33 @@ import { env } from './env';
 import type { Database } from '@/types/database';
 
 /**
- * Auth token storage. SecureStore is encrypted at rest (Keychain / Keystore),
- * which is the right home for refresh tokens. SecureStore has a ~2KB value
- * limit and is native-only, so we no-op on web.
+ * Auth token storage. On native, SecureStore is encrypted at rest (Keychain / Keystore) —
+ * the right home for refresh tokens. On web (no SecureStore), fall back to localStorage so
+ * sessions persist there too.
  */
+const isWeb = Platform.OS === 'web';
+const webStorage = (): Storage | undefined =>
+  (globalThis as { localStorage?: Storage }).localStorage;
+
 const SecureStoreAdapter = {
   getItem: (key: string) =>
-    Platform.OS === 'web' ? Promise.resolve(null) : SecureStore.getItemAsync(key),
-  setItem: (key: string, value: string) =>
-    Platform.OS === 'web'
-      ? Promise.resolve()
-      : SecureStore.setItemAsync(key, value),
-  removeItem: (key: string) =>
-    Platform.OS === 'web'
-      ? Promise.resolve()
-      : SecureStore.deleteItemAsync(key),
+    isWeb
+      ? Promise.resolve(webStorage()?.getItem(key) ?? null)
+      : SecureStore.getItemAsync(key),
+  setItem: (key: string, value: string) => {
+    if (isWeb) {
+      webStorage()?.setItem(key, value);
+      return Promise.resolve();
+    }
+    return SecureStore.setItemAsync(key, value);
+  },
+  removeItem: (key: string) => {
+    if (isWeb) {
+      webStorage()?.removeItem(key);
+      return Promise.resolve();
+    }
+    return SecureStore.deleteItemAsync(key);
+  },
 };
 
 export const supabase = createClient<Database>(

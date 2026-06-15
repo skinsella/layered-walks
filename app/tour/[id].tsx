@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import {
+  fetchAccessibleStopIds,
   fetchTour,
   fetchTourStops,
   type StopListItem,
@@ -33,17 +34,19 @@ export default function TourDetailScreen() {
   const insets = useSafeAreaInsets();
   const [tour, setTour] = useState<TourDetail | null>(null);
   const [stops, setStops] = useState<StopListItem[]>([]);
+  const [accessible, setAccessible] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [buyMsg, setBuyMsg] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
-    Promise.all([fetchTour(id), fetchTourStops(id)])
-      .then(([t, s]) => {
+    Promise.all([fetchTour(id), fetchTourStops(id), fetchAccessibleStopIds(id)])
+      .then(([t, s, acc]) => {
         if (!alive) return;
         setTour(t);
         setStops(s);
+        setAccessible(acc);
       })
       .catch((e) => alive && setError(e instanceof Error ? e.message : 'Failed to load'))
       .finally(() => alive && setLoading(false));
@@ -51,6 +54,9 @@ export default function TourDetailScreen() {
       alive = false;
     };
   }, [id]);
+
+  // Owned when every stop is accessible (creator or purchaser) — the gate has flipped.
+  const owned = stops.length > 0 && stops.every((s) => accessible.has(s.id));
 
   async function buy() {
     setBuyMsg(null);
@@ -128,36 +134,50 @@ export default function TourDetailScreen() {
           {/* itinerary */}
           <Text style={styles.sectionLabel}>Stops ({stops.length})</Text>
           <View style={styles.stopList}>
-            {stops.map((s) => (
-              <Pressable
-                key={s.id}
-                disabled={!s.is_preview}
-                onPress={() =>
-                  router.push({ pathname: '/player/[tourId]', params: { tourId: id } })
-                }
-                style={styles.stopRow}
-              >
-                <Text style={styles.stopSeq}>{s.sequence}</Text>
-                <Text style={styles.stopTitle}>{s.title}</Text>
-                {s.is_preview ? (
-                  <Text style={styles.previewBadge}>▶ preview</Text>
-                ) : (
-                  <Text style={styles.lock}>🔒</Text>
-                )}
-              </Pressable>
-            ))}
+            {stops.map((s) => {
+              const unlocked = accessible.has(s.id);
+              return (
+                <Pressable
+                  key={s.id}
+                  disabled={!unlocked}
+                  onPress={() =>
+                    router.push({ pathname: '/player/[tourId]', params: { tourId: id } })
+                  }
+                  style={styles.stopRow}
+                >
+                  <Text style={styles.stopSeq}>{s.sequence}</Text>
+                  <Text style={styles.stopTitle}>{s.title}</Text>
+                  {!unlocked ? (
+                    <Text style={styles.lock}>🔒</Text>
+                  ) : s.is_preview ? (
+                    <Text style={styles.previewBadge}>▶ preview</Text>
+                  ) : (
+                    <Text style={styles.unlocked}>▶ play</Text>
+                  )}
+                </Pressable>
+              );
+            })}
           </View>
         </View>
       </ScrollView>
 
-      {/* sticky buy bar */}
+      {/* sticky bar: Start when owned (gate flipped), otherwise Buy */}
       <View style={[styles.buyBar, { paddingBottom: insets.bottom + 12 }]}>
         {buyMsg && <Text style={styles.buyMsg}>{buyMsg}</Text>}
-        <Pressable style={styles.buyButton} onPress={buy}>
-          <Text style={styles.buyText}>
-            {tour.price_cents === 0 ? 'Start walk' : `Buy · ${price}`}
-          </Text>
-        </Pressable>
+        {owned ? (
+          <Pressable
+            style={styles.buyButton}
+            onPress={() => router.push({ pathname: '/player/[tourId]', params: { tourId: id } })}
+          >
+            <Text style={styles.buyText}>Start walk</Text>
+          </Pressable>
+        ) : (
+          <Pressable style={styles.buyButton} onPress={buy}>
+            <Text style={styles.buyText}>
+              {tour.price_cents === 0 ? 'Start walk' : `Buy · ${price}`}
+            </Text>
+          </Pressable>
+        )}
       </View>
     </View>
   );
@@ -214,6 +234,7 @@ const styles = StyleSheet.create({
   stopSeq: { fontFamily: fonts.mono, fontSize: 13, color: colors.textMuted, width: 18 },
   stopTitle: { flex: 1, fontFamily: fonts.textMedium, fontSize: 16, color: colors.text },
   previewBadge: { fontFamily: fonts.textSemibold, fontSize: 13, color: colors.primary },
+  unlocked: { fontFamily: fonts.textSemibold, fontSize: 13, color: colors.success },
   lock: { fontSize: 14 },
   buyBar: {
     position: 'absolute',

@@ -30,6 +30,24 @@ export type Database = {
           dwell_time_sec: number;
         }[];
       };
+      route_candidates: {
+        Args: {
+          p_city: string;
+          p_themes: string[];
+          p_origin_lng: number;
+          p_origin_lat: number;
+          p_limit: number;
+        };
+        Returns: {
+          id: string;
+          title: string;
+          lng: number;
+          lat: number;
+          dwell_time_sec: number;
+          theme_hits: number;
+          d: number;
+        }[];
+      };
     };
     Enums: {
       tour_status: 'draft' | 'in_review' | 'published' | 'archived';

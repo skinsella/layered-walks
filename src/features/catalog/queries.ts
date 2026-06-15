@@ -107,3 +107,14 @@ export async function fetchTourStops(tourId: string): Promise<StopListItem[]> {
   if (error) throw error;
   return (data ?? []) as StopListItem[];
 }
+
+/**
+ * The set of stop ids the CURRENT user may actually open, read straight from the gated
+ * `stops` table — so RLS decides: anon/non-buyer gets only preview stops; an owner (creator)
+ * or purchaser gets all. This is what makes the content-gate flip *visible* in the UI.
+ */
+export async function fetchAccessibleStopIds(tourId: string): Promise<Set<string>> {
+  const { data, error } = await supabase.from('stops').select('id').eq('tour_id', tourId);
+  if (error) throw error;
+  return new Set((data ?? []).map((r: { id: string }) => r.id));
+}
