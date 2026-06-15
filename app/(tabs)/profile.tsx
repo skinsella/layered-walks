@@ -12,13 +12,26 @@ export default function Profile() {
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <View style={styles.body}>
-        <Text style={styles.label}>Signed in as</Text>
-        <Text style={styles.email}>{session?.user.email ?? '—'}</Text>
+        {session ? (
+          <>
+            <Text style={styles.label}>Signed in as</Text>
+            <Text style={styles.email}>{session.user.email ?? '—'}</Text>
+          </>
+        ) : (
+          <>
+            <Text style={styles.label}>Account</Text>
+            <Text style={styles.email}>You&apos;re browsing as a guest</Text>
+            <Pressable
+              style={styles.creatorBtn}
+              onPress={() => router.push('/(auth)/sign-in')}
+            >
+              <Text style={styles.creatorTitle}>Sign in or create an account</Text>
+              <Text style={styles.creatorSub}>To buy tours, save walks, and record →</Text>
+            </Pressable>
+          </>
+        )}
 
-        {/* TODO(sprint 1): theme preferences, default duration/intensity. */}
-
-        {/* Creator entry → Record mode. Full onboarding (Stripe Connect) is Sprint 6;
-            this opens the field Record screen on a draft tour. */}
+        {/* Creator entry → Record mode. Full onboarding (Stripe Connect) is Sprint 6. */}
         <Pressable
           style={styles.creatorBtn}
           onPress={() => router.push({ pathname: '/record/[tourId]', params: { tourId: 'new' } })}
@@ -27,9 +40,11 @@ export default function Profile() {
           <Text style={styles.creatorSub}>Walk your route, narrate each stop in place →</Text>
         </Pressable>
 
-        <Pressable style={styles.signOut} onPress={signOut}>
-          <Text style={styles.signOutText}>Sign out</Text>
-        </Pressable>
+        {session && (
+          <Pressable style={styles.signOut} onPress={signOut}>
+            <Text style={styles.signOutText}>Sign out</Text>
+          </Pressable>
+        )}
       </View>
     </SafeAreaView>
   );

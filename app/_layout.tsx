@@ -23,8 +23,9 @@ function useAuthGate() {
   useEffect(() => {
     if (loading) return;
     const inAuthGroup = segments[0] === '(auth)';
-    if (!session && !inAuthGroup) router.replace('/(auth)/sign-in');
-    else if (session && inAuthGroup) router.replace('/(tabs)');
+    // Anonymous browsing is allowed (browse the catalog before signing up); only bounce a
+    // signed-in user out of the auth screens. Sign-in is reachable from Profile.
+    if (session && inAuthGroup) router.replace('/(tabs)');
   }, [session, loading, segments, router]);
 }
 
