@@ -3,19 +3,34 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { FieldScreen } from '@/features/field/FieldScreen';
+import { WalkMap, type GeoPoint, type MapStop } from '@/components/WalkMap';
 import { field } from '@/theme/colors';
-import { fonts, typeScale } from '@/theme/typography';
+import { fonts } from '@/theme/typography';
 
 /**
- * Record mode — the creator's field screen, the deliberate MIRROR of the Player
- * (docs/07 §7). Same Field shell; inverted job:
- *   listener's now-playing  → creator's record button
- *   GPS triggers playback   → GPS stamps the coordinate
- *   audio scrubber          → live waveform
+ * Record mode — the creator's field screen, the MIRROR of the Player (docs/07 §7).
+ * GPS *stamps* each stop's coordinate as you stand there, and a breadcrumb track is
+ * accumulated as you walk — so the geographic area is captured well (migration 0012).
  *
- * Real capture (expo-av record + expo-location stamp + Storage upload) is Sprint 6.
- * This wires the layout + interaction shell against the Field tokens.
+ * Real capture (expo-location track + per-stop coordinate/accuracy + expo-av audio →
+ * Storage upload) is Sprint 6. The map below uses demo geometry to show the shape.
  */
+
+// Demo geometry (real values come from expo-location on device).
+const CAPTURED: MapStop[] = [
+  { lng: -8.6267, lat: 52.6638 }, // 1 · Bank Place
+  { lng: -8.6255, lat: 52.662 }, // 2 · Cruise's Street
+];
+const CURRENT: GeoPoint = { lng: -8.6285, lat: 52.6655 }; // recording here now
+const TRACK: GeoPoint[] = [
+  { lng: -8.6267, lat: 52.6638 },
+  { lng: -8.6261, lat: 52.6629 },
+  { lng: -8.6255, lat: 52.662 },
+  { lng: -8.6266, lat: 52.6634 },
+  { lng: -8.6278, lat: 52.6647 },
+  { lng: -8.6285, lat: 52.6655 },
+];
+
 export default function Record() {
   const { tourId } = useLocalSearchParams<{ tourId: string }>();
   const router = useRouter();
@@ -38,9 +53,12 @@ export default function Record() {
       <Text style={styles.tourName}>The Georgian City</Text>
 
       <View style={styles.body}>
-        <Text style={styles.stat}>Stop {stopIndex}</Text>
-        {/* Live GPS auto-stamped — no manual pin-dropping (the creator-side magic). */}
-        <Text style={styles.coords}>52.6638, −8.6267   ±4 m</Text>
+        {/* The geography being captured: walked track + captured pins + live position. */}
+        <WalkMap stops={CAPTURED} path={TRACK} current={CURRENT} height={150} field />
+        <Text style={styles.mapHint}>2 stops captured · recording stop {stopIndex}</Text>
+
+        <Text style={styles.coords}>52.6655, −8.6285</Text>
+        <Text style={styles.accuracy}>● GPS strong · ±4 m</Text>
         <Text style={styles.working}>Custom House (working title)</Text>
 
         <Pressable
@@ -50,11 +68,9 @@ export default function Record() {
           <View style={[styles.recordCore, recording && styles.recordCoreActive]} />
         </Pressable>
 
-        <View style={styles.waveform}>
-          <Text style={styles.waveText}>
-            {recording ? '〔 ▁▂▅▇▇▅▂▁ 〕 0:42' : 'tap to record this stop'}
-          </Text>
-        </View>
+        <Text style={styles.waveText}>
+          {recording ? '〔 ▁▂▅▇▇▅▂▁ 〕 0:42' : 'tap to record this stop'}
+        </Text>
 
         <View style={styles.secondaryRow}>
           <Pressable onPress={() => setRecording(false)}>
@@ -69,7 +85,7 @@ export default function Record() {
           style={styles.saveBtn}
           onPress={() => {
             setRecording(false);
-            setStopIndex((i) => i + 1); // commit; GPS re-stamps the next stop on arrival
+            setStopIndex((i) => i + 1);
           }}
         >
           <Text style={styles.saveText}>Save stop &amp; walk on  →</Text>
@@ -93,27 +109,28 @@ const styles = StyleSheet.create({
   recTime: { fontFamily: fonts.mono, fontSize: 14, color: field.textMuted },
   tourName: { fontFamily: fonts.display, fontSize: 16, color: field.text, textAlign: 'center' },
 
-  body: { flex: 1, paddingHorizontal: 24, alignItems: 'center', paddingTop: 16 },
-  stat: { ...typeScale.fieldStat, color: field.text, marginTop: 12 },
-  coords: { fontFamily: fonts.mono, fontSize: 14, color: field.accent, marginTop: 12 },
-  working: { fontFamily: fonts.text, fontSize: 15, color: field.textMuted, marginTop: 6 },
+  body: { flex: 1, paddingHorizontal: 24, alignItems: 'center', paddingTop: 12 },
+  mapHint: { fontFamily: fonts.mono, fontSize: 12, color: field.textMuted, marginTop: 8 },
+
+  coords: { fontFamily: fonts.mono, fontSize: 15, color: field.accent, marginTop: 14 },
+  accuracy: { fontFamily: fonts.text, fontSize: 12, color: '#5FB58F', marginTop: 4 },
+  working: { fontFamily: fonts.text, fontSize: 15, color: field.textMuted, marginTop: 4 },
 
   recordBtn: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     borderWidth: 3,
     borderColor: field.border,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 36,
+    marginTop: 20,
   },
   recordBtnActive: { borderColor: field.recording },
-  recordCore: { width: 92, height: 92, borderRadius: 46, backgroundColor: field.recording },
-  recordCoreActive: { width: 56, height: 56, borderRadius: 12 },
+  recordCore: { width: 76, height: 76, borderRadius: 38, backgroundColor: field.recording },
+  recordCoreActive: { width: 46, height: 46, borderRadius: 10 },
 
-  waveform: { height: 40, justifyContent: 'center', marginTop: 20 },
-  waveText: { fontFamily: fonts.mono, fontSize: 15, color: field.textMuted },
+  waveText: { fontFamily: fonts.mono, fontSize: 14, color: field.textMuted, marginTop: 14 },
 
   secondaryRow: { flexDirection: 'row', gap: 28, marginTop: 12 },
   secondary: { fontFamily: fonts.textMedium, fontSize: 15, color: field.textMuted },

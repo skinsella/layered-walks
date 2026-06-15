@@ -3,8 +3,18 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { FieldScreen } from '@/features/field/FieldScreen';
+import { WalkMap, type GeoPoint, type MapStop } from '@/components/WalkMap';
 import { field } from '@/theme/colors';
 import { fonts, typeScale } from '@/theme/typography';
+
+// Demo route geometry (real values load from the downloaded tour on device).
+const ROUTE: MapStop[] = [
+  { lng: -8.6267, lat: 52.6638 },
+  { lng: -8.6285, lat: 52.6655 },
+  { lng: -8.6255, lat: 52.662 },
+  { lng: -8.623, lat: 52.6585 },
+];
+const HERE: GeoPoint = { lng: -8.6272, lat: 52.6646 }; // between stops
 
 /**
  * Walk mode — audio-first minimal (docs/06 §1, docs/07 §7). Two states:
@@ -37,9 +47,9 @@ export default function Player() {
           <Text style={styles.nextMeta}>~4 min walk · 250 m</Text>
           <Text style={styles.reassure}>Keep walking — I&apos;ll start when you arrive.</Text>
 
-          <Pressable style={styles.mapStrip} onPress={() => {}}>
-            <Text style={styles.mapStripText}>▭  map · tap to expand ⤢</Text>
-          </Pressable>
+          <View style={styles.mapStrip}>
+            <WalkMap stops={ROUTE} current={HERE} height={150} field />
+          </View>
 
           <View style={styles.controlsRow}>
             <FieldButton label="⏸  Pause walk" onPress={() => {}} />
@@ -136,18 +146,7 @@ const styles = StyleSheet.create({
     marginTop: 28,
     lineHeight: 26,
   },
-  mapStrip: {
-    width: '100%',
-    height: 72,
-    backgroundColor: field.surface,
-    borderColor: field.border,
-    borderWidth: 1,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 'auto',
-  },
-  mapStripText: { fontFamily: fonts.text, color: field.textMuted },
+  mapStrip: { width: '100%', marginTop: 'auto' },
   controlsRow: { flexDirection: 'row', gap: 12, marginTop: 16, width: '100%' },
   devBtn: { marginTop: 16, marginBottom: 8 },
   devText: { fontFamily: fonts.mono, fontSize: 12, color: field.textMuted },
