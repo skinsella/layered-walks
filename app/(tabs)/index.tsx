@@ -3,24 +3,30 @@ import {
   ActivityIndicator,
   FlatList,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 
 import { fetchPublishedTours, fetchThemes } from '@/features/catalog/queries';
-import type { Theme, TourCard } from '@/types/database';
+import { LensChip } from '@/components/LensChip';
+import { TourCard } from '@/components/TourCard';
+import type { Theme, TourCard as TourCardModel } from '@/types/database';
 import { colors } from '@/theme/colors';
+import { fonts, typeScale } from '@/theme/typography';
 
-// MVP launches with a single active city (Limerick). Once multi-city, add a picker.
+// MVP launches with a single active city (Limerick). Replace with the real id read
+// from the `cities` table (see docs/06 — known scaffold gap).
 const LIMERICK_PLACEHOLDER = 'REPLACE_WITH_CITY_ID_FROM_DB';
 
 export default function Discover() {
+  const router = useRouter();
   const [themes, setThemes] = useState<Theme[]>([]);
-  const [tours, setTours] = useState<TourCard[]>([]);
-  const [activeTheme, setActiveTheme] = useState<string | undefined>();
+  const [tours, setTours] = useState<TourCardModel[]>([]);
+  const [activeLens, setActiveLens] = useState<Theme | undefined>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,110 +36,108 @@ export default function Discover() {
 
   useEffect(() => {
     setLoading(true);
-    fetchPublishedTours(LIMERICK_PLACEHOLDER, activeTheme)
+    fetchPublishedTours(LIMERICK_PLACEHOLDER, activeLens?.id)
       .then(setTours)
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'))
       .finally(() => setLoading(false));
-  }, [activeTheme]);
+  }, [activeLens]);
+
+  // The section voice changes with the active lens (docs/06 §2).
+  const sectionTitle = activeLens
+    ? `Limerick through ${activeLens.name}`
+    : 'Featured in Limerick';
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      <Link href="/build-walk" asChild>
-        <Pressable style={styles.cta}>
-          <Text style={styles.ctaText}>Build a walk for the time I have →</Text>
-        </Pressable>
-      </Link>
-
+    <SafeAreaView style={styles.container} edges={['top']}>
       <FlatList
-        horizontal
-        data={themes}
+        data={tours}
         keyExtractor={(t) => t.id}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.themeRow}
-        renderItem={({ item }) => {
-          const active = item.id === activeTheme;
-          return (
-            <Pressable
-              style={[styles.chip, active && styles.chipActive]}
-              onPress={() => setActiveTheme(active ? undefined : item.id)}
-            >
-              <Text style={[styles.chipText, active && styles.chipTextActive]}>
-                {item.icon ? `${item.icon} ` : ''}
-                {item.name}
-              </Text>
-            </Pressable>
-          );
-        }}
-      />
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          <View style={styles.header}>
+            <View style={styles.topRow}>
+              <Text style={styles.wordmark}>Limerick</Text>
+              <Link href="/(tabs)/profile" asChild>
+                <Pressable>
+                  <Text style={styles.profileLink}>◐</Text>
+                </Pressable>
+              </Link>
+            </View>
 
-      {loading ? (
-        <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
-      ) : error ? (
-        <Text style={styles.error}>{error}</Text>
-      ) : (
-        <FlatList
-          data={tours}
-          keyExtractor={(t) => t.id}
-          contentContainerStyle={{ padding: 16, gap: 12 }}
-          ListEmptyComponent={
-            <Text style={styles.empty}>No tours yet. Seed flagship tours to begin.</Text>
-          }
-          renderItem={({ item }) => (
-            <Link href={{ pathname: '/tour/[id]', params: { id: item.id } }} asChild>
-              <Pressable style={styles.card}>
-                <Text style={styles.cardTitle}>{item.title}</Text>
-                {item.summary && <Text style={styles.cardSummary}>{item.summary}</Text>}
-                <View style={styles.cardMeta}>
-                  <Text style={styles.cardMetaText}>
-                    {item.est_duration_min ?? '—'} min · {item.difficulty}
-                  </Text>
-                  <Text style={styles.price}>
-                    {(item.price_cents / 100).toFixed(2)} {item.currency}
-                  </Text>
-                </View>
-              </Pressable>
-            </Link>
-          )}
-        />
-      )}
+            {/* Generative entry — present but SECONDARY (hero = curated). */}
+            <Pressable style={styles.buildCta} onPress={() => router.push('/build-walk')}>
+              <Text style={styles.buildCtaText}>Build a walk for the time you have</Text>
+              <Text style={styles.buildCtaArrow}>→</Text>
+            </Pressable>
+
+            <Text style={styles.lensesLabel}>Lenses</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.lensRow}
+            >
+              {themes.map((t) => (
+                <LensChip
+                  key={t.id}
+                  slug={t.slug}
+                  label={t.name}
+                  icon={t.icon}
+                  active={t.id === activeLens?.id}
+                  onPress={() => setActiveLens(activeLens?.id === t.id ? undefined : t)}
+                />
+              ))}
+            </ScrollView>
+
+            <Text style={styles.sectionTitle}>{sectionTitle}</Text>
+          </View>
+        }
+        renderItem={({ item }) => (
+          <TourCard
+            tour={item}
+            onPress={() =>
+              router.push({ pathname: '/tour/[id]', params: { id: item.id } })
+            }
+          />
+        )}
+        ItemSeparatorComponent={() => <View style={{ height: 14 }} />}
+        ListEmptyComponent={
+          loading ? (
+            <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
+          ) : error ? (
+            <Text style={styles.note}>{error}</Text>
+          ) : (
+            <Text style={styles.note}>
+              No tours yet. Seed the flagship Limerick tours to begin.
+            </Text>
+          )
+        }
+      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  cta: {
-    margin: 16,
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    padding: 16,
-  },
-  ctaText: { color: colors.primaryText, fontWeight: '700', fontSize: 16 },
-  themeRow: { paddingHorizontal: 16, gap: 8 },
-  chip: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: 20,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-  },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { color: colors.text },
-  chipTextActive: { color: colors.primaryText, fontWeight: '700' },
-  card: {
-    backgroundColor: colors.surface,
+  listContent: { padding: 16, paddingTop: 8 },
+  header: { gap: 16, marginBottom: 16 },
+  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  wordmark: { ...typeScale.hero, color: colors.text },
+  profileLink: { fontSize: 22, color: colors.textMuted },
+  buildCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surfaceAlt,
     borderColor: colors.border,
     borderWidth: 1,
     borderRadius: 12,
     padding: 16,
-    gap: 6,
   },
-  cardTitle: { color: colors.text, fontSize: 18, fontWeight: '700' },
-  cardSummary: { color: colors.textMuted },
-  cardMeta: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
-  cardMetaText: { color: colors.textMuted },
-  price: { color: colors.primary, fontWeight: '700' },
-  empty: { color: colors.textMuted, textAlign: 'center', marginTop: 40 },
-  error: { color: colors.danger, textAlign: 'center', marginTop: 40 },
+  buildCtaText: { fontFamily: fonts.textMedium, fontSize: 15, color: colors.text },
+  buildCtaArrow: { fontFamily: fonts.text, fontSize: 18, color: colors.primary },
+  lensesLabel: { ...typeScale.section, color: colors.textMuted },
+  lensRow: { gap: 8, paddingRight: 16 },
+  sectionTitle: { ...typeScale.title, color: colors.text, marginTop: 4 },
+  note: { fontFamily: fonts.text, color: colors.textMuted, textAlign: 'center', marginTop: 40 },
 });

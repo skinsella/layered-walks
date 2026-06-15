@@ -45,6 +45,10 @@ function RootNavigator() {
         name="player/[tourId]"
         options={{ headerShown: false, presentation: 'fullScreenModal' }}
       />
+      <Stack.Screen
+        name="record/[tourId]"
+        options={{ headerShown: false, presentation: 'fullScreenModal' }}
+      />
     </Stack>
   );
 }

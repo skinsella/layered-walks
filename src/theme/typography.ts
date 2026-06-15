@@ -26,7 +26,7 @@ export const typeScale = {
     fontFamily: fonts.textSemibold,
     fontSize: 13,
     letterSpacing: 1,
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
   },
   body: { fontFamily: fonts.text, fontSize: 16, lineHeight: 24 },
   bodyStrong: { fontFamily: fonts.textMedium, fontSize: 16, lineHeight: 24 },
