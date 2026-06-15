@@ -19,7 +19,18 @@ export type Database = {
   public: {
     Tables: Record<string, never>;
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      get_tour_stops: {
+        Args: { p_tour_id: string };
+        Returns: {
+          id: string;
+          sequence: number;
+          title: string;
+          is_preview: boolean;
+          dwell_time_sec: number;
+        }[];
+      };
+    };
     Enums: {
       tour_status: 'draft' | 'in_review' | 'published' | 'archived';
       creator_status: 'pending' | 'approved' | 'suspended';

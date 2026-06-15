@@ -1,7 +1,6 @@
 -- Layered Walks — one-shot provisioning for a HOSTED Supabase project.
 -- Paste this whole file into the Supabase dashboard SQL editor and Run.
--- It applies every migration (0001–0010) in order, then the seed (Limerick,
--- lenses, demo creator, 3 published tours + stops). Idempotent-ish; safe to re-run.
+-- Applies every migration (0001–0011) in order, then the seed.
 -- Generated from supabase/migrations/*.sql + supabase/seed.sql.
 
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -582,6 +581,38 @@ $$;
 -- Let the app (authenticated users) and the service role call it.
 grant execute on function route_candidates(uuid, uuid[], double precision, double precision, integer)
   to anon, authenticated, service_role;
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- FILE: migrations/0011_tour_stop_list.sql
+-- ═══════════════════════════════════════════════════════════════════════════
+-- 0011 — get_tour_stops(): the public itinerary for a PUBLISHED tour.
+-- Returns only NON-sensitive columns (id, sequence, title, preview flag, dwell time) so the
+-- Tour detail page can list the whole itinerary as a sales teaser — while narration_text,
+-- audio_path and images stay gated by the `stops` RLS content-gate (migration 0009).
+-- SECURITY DEFINER so it can see all of a published tour's stops regardless of purchase;
+-- it deliberately never selects the paid columns.
+
+create or replace function get_tour_stops(p_tour_id uuid)
+returns table (
+  id             uuid,
+  sequence       integer,
+  title          text,
+  is_preview     boolean,
+  dwell_time_sec integer
+)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select s.id, s.sequence, s.title, s.is_preview, s.dwell_time_sec
+  from stops s
+  join tours t on t.id = s.tour_id and t.status = 'published'
+  where s.tour_id = p_tour_id
+  order by s.sequence;
+$$;
+
+grant execute on function get_tour_stops(uuid) to anon, authenticated, service_role;
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- FILE: seed.sql

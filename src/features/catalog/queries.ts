@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import type { City, Theme, TourCard } from '@/types/database';
+import type { City, Database, Theme, TourCard } from '@/types/database';
 
 /** Active launch cities (Limerick at MVP). */
 export async function fetchActiveCities(): Promise<City[]> {
@@ -49,4 +49,61 @@ export async function fetchPublishedTours(
   const { data, error } = await query.order('is_featured', { ascending: false });
   if (error) throw error;
   return (data ?? []) as TourCard[];
+}
+
+export type TourDetail = {
+  id: string;
+  title: string;
+  summary: string | null;
+  description: string | null;
+  cover_image_url: string | null;
+  price_cents: number;
+  currency: string;
+  difficulty: Database['public']['Enums']['difficulty_level'];
+  est_duration_min: number | null;
+  distance_meters: number | null;
+  rating_avg: number;
+  rating_count: number;
+  creator: { display_name: string; bio: string | null } | null;
+  themes: { slug: string; name: string; icon: string | null }[];
+};
+
+/** Full tour page: tour + creator credentials + lens tags. Published-only via RLS. */
+export async function fetchTour(id: string): Promise<TourDetail> {
+  const { data, error } = await supabase
+    .from('tours')
+    .select(
+      'id, title, summary, description, cover_image_url, price_cents, currency, difficulty, est_duration_min, distance_meters, rating_avg, rating_count, creator_profiles(display_name, bio), tour_themes(themes(slug, name, icon))',
+    )
+    .eq('id', id)
+    .single();
+  if (error) throw error;
+  const row = data as Record<string, unknown> & {
+    creator_profiles?: { display_name: string; bio: string | null } | null;
+    tour_themes?: { themes: { slug: string; name: string; icon: string | null } | null }[];
+  };
+  return {
+    ...(row as unknown as TourDetail),
+    creator: row.creator_profiles ?? null,
+    themes: (row.tour_themes ?? []).map((tt) => tt.themes).filter(Boolean) as TourDetail['themes'],
+  };
+}
+
+export type StopListItem = {
+  id: string;
+  sequence: number;
+  title: string;
+  is_preview: boolean;
+  dwell_time_sec: number;
+};
+
+/**
+ * The public itinerary (safe columns only) via the get_tour_stops() RPC (migration 0011).
+ * Returns ALL stops of a published tour — titles + preview flag — so the page can show the
+ * locked itinerary. Narration/audio stay gated by the stops RLS content-gate.
+ */
+export async function fetchTourStops(tourId: string): Promise<StopListItem[]> {
+  const { data, error } = await supabase.rpc('get_tour_stops', { p_tour_id: tourId });
+  if (error) throw error;
+  return (data ?? []) as StopListItem[];
 }
