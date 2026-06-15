@@ -1,0 +1,55 @@
+{
+  "expo": {
+    "name": "Layered Walks",
+    "slug": "layered-walks",
+    "scheme": "layeredwalks",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0E1116"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.layeredwalks.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Layered Walks uses your location to trigger audio and guide you between stops on a tour.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Layered Walks triggers stop audio automatically as you walk, even when the app is in the background.",
+        "UIBackgroundModes": ["location", "audio"]
+      }
+    },
+    "android": {
+      "package": "com.layeredwalks.app",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Layered Walks triggers stop audio automatically as you walk."
+        }
+      ],
+      [
+        "@rnmapbox/maps",
+        {
+          "RNMapboxMapsDownloadToken": "SET_MAPBOX_DOWNLOAD_TOKEN_FOR_EAS_BUILD"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

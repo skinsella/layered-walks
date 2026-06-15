@@ -1,0 +1,41 @@
+# Supabase local config. Run `npx supabase start` to bring up Postgres+PostGIS locally.
+project_id = "layered-walks"
+
+[db]
+port = 54322
+major_version = 15
+
+[api]
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+
+[studio]
+port = 54323
+
+[auth]
+site_url = "layeredwalks://"
+additional_redirect_urls = ["layeredwalks://"]
+jwt_expiry = 3600
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+enable_confirmations = false  # MVP/dev: skip email confirm. Enable for production.
+
+# OAuth providers (fill secrets via env, not here) — Sprint 1.
+# [auth.external.google]
+# enabled = true
+# [auth.external.apple]
+# enabled = true
+
+[functions.routes-generate]
+verify_jwt = true
+[functions.checkout]
+verify_jwt = true
+[functions.stripe-webhook]
+verify_jwt = false   # Stripe calls this; auth is via signature verification
+[functions.downloads-manifest]
+verify_jwt = true
+[functions.creators-onboard]
+verify_jwt = true
