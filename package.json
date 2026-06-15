@@ -14,6 +14,7 @@
     "fn:serve": "supabase functions serve --env-file supabase/.env"
   },
   "dependencies": {
+    "@opentelemetry/api": "^1.9.0",
     "expo": "~52.0.0",
     "expo-font": "~13.0.0",
     "expo-splash-screen": "~0.29.0",

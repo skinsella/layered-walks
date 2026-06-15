@@ -103,3 +103,12 @@ Known scaffold gaps to close first:
 > **Verified 2026-06-15** against a clean Expo SDK 52 install: `tsc --noEmit` ✓, `eslint` ✓
 > (0 errors), `expo install --check` ✓ (deps aligned). Deno Edge Functions under
 > `supabase/functions/` are excluded from the app `tsconfig` and checked by the Supabase CLI.
+> Discover, the audio-first Player (both states), and the Record screen were also **rendered
+> live** via Expo Web and visually confirmed against the editorial design.
+
+### Troubleshooting (found during the live render)
+- **`Unable to resolve module @opentelemetry/api`** when bundling: `@supabase/supabase-js`
+  imports it optionally and Metro resolves it statically. It's now a direct dependency — keep it.
+- **`Cannot find module 'ajv/dist/compile/codegen'`** (web/Metro start): an `ajv` v6/v8
+  hoisting clash from `--legacy-peer-deps`. Fix: `npm i ajv@^8`. A clean install via
+  `npx expo install` usually avoids it.
