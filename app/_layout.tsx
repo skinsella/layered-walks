@@ -2,9 +2,16 @@ import { useEffect } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { useFonts } from 'expo-font';
+import * as SplashScreen from 'expo-splash-screen';
+import { Fraunces_400Regular, Fraunces_600SemiBold } from '@expo-google-fonts/fraunces';
+import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold } from '@expo-google-fonts/inter';
+import { SpaceMono_400Regular } from '@expo-google-fonts/space-mono';
 
 import { AuthProvider, useAuth } from '@/features/auth/AuthContext';
 import { colors } from '@/theme/colors';
+
+SplashScreen.preventAutoHideAsync();
 
 /** Redirects unauthenticated users to the auth group, and authed users out of it. */
 function useAuthGate() {
@@ -43,10 +50,28 @@ function RootNavigator() {
 }
 
 export default function RootLayout() {
+  // Editorial type system (docs/07 §4). Gate render until fonts resolve so the
+  // serif display never flashes a fallback. Verify weight export names post-install.
+  const [fontsLoaded, fontError] = useFonts({
+    Fraunces_400Regular,
+    Fraunces_600SemiBold,
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    SpaceMono_400Regular,
+  });
+
+  useEffect(() => {
+    if (fontsLoaded || fontError) SplashScreen.hideAsync();
+  }, [fontsLoaded, fontError]);
+
+  if (!fontsLoaded && !fontError) return null;
+
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    // PAPER is the default surface (Plan/Reflect). Field screens opt into `field.*`.
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg }}>
       <AuthProvider>
-        <StatusBar style="light" />
+        <StatusBar style="dark" />
         <RootNavigator />
       </AuthProvider>
     </GestureHandlerRootView>
