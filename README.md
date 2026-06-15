@@ -97,5 +97,9 @@ Known scaffold gaps to close first:
 - `assets/icon.png` + splash are referenced in `app.json` but not included — add real assets.
 - City id is hard-coded as a placeholder in `app/(tabs)/index.tsx` and `build-walk.tsx` —
   read it from the `cities` table.
-- Dependency versions in `package.json` are indicative; `npx expo install --fix` is the
-  source of truth for native-compatible versions.
+- Screens are visually real but behaviourally stubbed — no live audio/GPS/recording or real
+  tour data yet (Sprints 4–6). Player & Record use a dev toggle to preview their states.
+
+> **Verified 2026-06-15** against a clean Expo SDK 52 install: `tsc --noEmit` ✓, `eslint` ✓
+> (0 errors), `expo install --check` ✓ (deps aligned). Deno Edge Functions under
+> `supabase/functions/` are excluded from the app `tsconfig` and checked by the Supabase CLI.

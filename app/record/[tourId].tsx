@@ -25,7 +25,7 @@ export default function Record() {
   return (
     <FieldScreen>
       <View style={styles.topBar}>
-        <Pressable onPress={() => router.back()}>
+        <Pressable onPress={() => router.back()} accessibilityLabel={`Close recording ${tourId}`}>
           <Text style={styles.close}>✕</Text>
         </Pressable>
         <View style={styles.recStatus}>

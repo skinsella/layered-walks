@@ -23,7 +23,7 @@ export default function Player() {
   return (
     <FieldScreen>
       <View style={styles.topBar}>
-        <Pressable onPress={() => router.back()}>
+        <Pressable onPress={() => router.back()} accessibilityLabel={`Close walk ${tourId}`}>
           <Text style={styles.close}>✕</Text>
         </Pressable>
         <Text style={styles.tourName}>Economic Transformation</Text>
