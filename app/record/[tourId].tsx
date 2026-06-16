@@ -10,6 +10,7 @@ import { useAuth } from '@/features/auth/AuthContext';
 import { fetchActiveCities, fetchThemes } from '@/features/catalog/queries';
 import type { Theme } from '@/types/database';
 import { useAudioRecorder } from '@/features/recording/useAudioRecorder';
+import { useLiveLocation } from '@/features/recording/useLiveLocation';
 import {
   captureLocation,
   ensureCreatorProfile,
@@ -36,6 +37,7 @@ export default function Record() {
   const router = useRouter();
   const { session } = useAuth();
   const recorder = useAudioRecorder();
+  const live = useLiveLocation();
 
   const [setup, setSetup] = useState<{ userId: string; tourId: string } | null>(null);
   const [setupError, setSetupError] = useState<string | null>(null);
@@ -83,6 +85,11 @@ export default function Record() {
 
   async function getLocation() {
     setError(null);
+    // Prefer the live-tracked position; fall back to a one-shot read.
+    if (live.position) {
+      setCoords(live.position);
+      return;
+    }
     setBusy('location');
     try {
       setCoords(await captureLocation());
@@ -165,7 +172,12 @@ export default function Record() {
   }
 
   const mapStops: MapStop[] = stops.map((s) => ({ lng: s.lng, lat: s.lat }));
-  const current: GeoPoint | undefined = coords ? { lng: coords.lng, lat: coords.lat } : undefined;
+  // The "you are here" dot: live position while walking, falling back to a captured fix.
+  const current: GeoPoint | undefined = live.position
+    ? { lng: live.position.lng, lat: live.position.lat }
+    : coords
+      ? { lng: coords.lng, lat: coords.lat }
+      : undefined;
   const canSave = !!coords && !!audio && busy !== 'save';
 
   return (
@@ -174,10 +186,17 @@ export default function Record() {
       <Text style={styles.tourName}>My recorded tour</Text>
 
       <ScrollView contentContainerStyle={styles.body}>
-        <WalkMap stops={mapStops} current={current} height={150} field />
-        <Text style={styles.count}>
-          {stops.length} stop{stops.length === 1 ? '' : 's'} recorded · adding stop {stops.length + 1}
-        </Text>
+        <WalkMap stops={mapStops} current={current} height={170} field />
+        <View style={styles.mapMeta}>
+          <Text style={styles.count}>
+            {stops.length} recorded · adding stop {stops.length + 1}
+          </Text>
+          {live.position ? (
+            <Text style={styles.live}>● you are here · ±{Math.round(live.position.accuracy)} m</Text>
+          ) : (
+            <Text style={styles.note}>{live.error ? 'location off' : 'finding you…'}</Text>
+          )}
+        </View>
 
         {setupError && <Text style={styles.error}>{setupError}</Text>}
 
@@ -300,7 +319,9 @@ const styles = StyleSheet.create({
   tourName: { fontFamily: fonts.display, fontSize: 16, color: field.text, textAlign: 'center' },
 
   body: { paddingHorizontal: 24, paddingBottom: 40, gap: 8 },
-  count: { fontFamily: fonts.mono, fontSize: 12, color: field.textMuted, marginTop: 8 },
+  mapMeta: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 },
+  count: { fontFamily: fonts.mono, fontSize: 12, color: field.textMuted },
+  live: { fontFamily: fonts.mono, fontSize: 12, color: '#5FB58F' },
   step: { fontFamily: fonts.textSemibold, fontSize: 14, color: field.text, marginTop: 16 },
   coords: { fontFamily: fonts.mono, fontSize: 14, color: field.accent },
 
