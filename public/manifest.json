@@ -1,0 +1,11 @@
+{
+  "name": "Layered Walks",
+  "short_name": "Layered Walks",
+  "description": "Walk a city through different lenses.",
+  "start_url": "/layered-walks/",
+  "scope": "/layered-walks/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0E1116",
+  "theme_color": "#FAF7F1"
+}
