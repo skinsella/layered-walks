@@ -13,7 +13,7 @@ import { useAuth } from '@/features/auth/AuthContext';
 import { colors } from '@/theme/colors';
 
 export default function SignIn() {
-  const { signInWithEmail, signUpWithEmail } = useAuth();
+  const { signInWithEmail, signUpWithEmail, signInWithGoogle } = useAuth();
   const [mode, setMode] = useState<'in' | 'up'>('in');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -30,6 +30,15 @@ export default function SignIn() {
       setError(e instanceof Error ? e.message : 'Something went wrong');
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function google() {
+    setError(null);
+    try {
+      await signInWithGoogle();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Google sign-in failed');
     }
   }
 
@@ -77,7 +86,16 @@ export default function SignIn() {
           </Text>
         </Pressable>
 
-        {/* TODO(sprint 1): Google + Apple buttons (Apple required by App Store). */}
+        <View style={styles.divider}>
+          <View style={styles.line} />
+          <Text style={styles.or}>or</Text>
+          <View style={styles.line} />
+        </View>
+
+        <Pressable style={styles.googleButton} onPress={google}>
+          <Text style={styles.googleG}>G</Text>
+          <Text style={styles.googleText}>Continue with Google</Text>
+        </Pressable>
       </View>
     </SafeAreaView>
   );
@@ -106,4 +124,20 @@ const styles = StyleSheet.create({
   buttonText: { color: colors.primaryText, fontWeight: '700', fontSize: 16 },
   switch: { color: colors.textMuted, textAlign: 'center', marginTop: 8 },
   error: { color: colors.danger },
+  divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 8 },
+  line: { flex: 1, height: 1, backgroundColor: colors.border },
+  or: { color: colors.textMuted },
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 14,
+  },
+  googleG: { color: '#4285F4', fontWeight: '800', fontSize: 18 },
+  googleText: { color: colors.text, fontWeight: '600', fontSize: 16 },
 });

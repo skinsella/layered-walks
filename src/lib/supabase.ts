@@ -44,7 +44,9 @@ export const supabase = createClient<Database>(
       storage: SecureStoreAdapter,
       autoRefreshToken: true,
       persistSession: true,
-      detectSessionInUrl: false,
+      // On web, parse the OAuth token from the redirect URL (needed for Google sign-in).
+      detectSessionInUrl: isWeb,
+      flowType: 'pkce',
     },
   },
 );

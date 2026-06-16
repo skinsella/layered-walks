@@ -142,3 +142,11 @@ insert into stop_themes (stop_id, theme_id) values
 ('b1111111-0000-0000-0000-000000000003', (select id from themes where slug = 'economics')),
 ('b1111111-0000-0000-0000-000000000004', (select id from themes where slug = 'history'))
 on conflict do nothing;
+
+-- Cover images — real Limerick photos from Wikimedia Commons (openly licensed).
+update tours set cover_image_url = 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/Limerick_-_63_O%27Connell_Street_-_The_Bank_Restaurant_-_Bar_-_geograph.org.uk_-_3068684.jpg/1280px-Limerick_-_63_O%27Connell_Street_-_The_Bank_Restaurant_-_Bar_-_geograph.org.uk_-_3068684.jpg'
+  where slug = 'economic-transformation';
+update tours set cover_image_url = 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/Street_Scene_with_Residential_Facades_-_Limerick_-_Ireland_%2841725831650%29.jpg/1280px-Street_Scene_with_Residential_Facades_-_Limerick_-_Ireland_%2841725831650%29.jpg'
+  where slug = 'the-georgian-city';
+update tours set cover_image_url = 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/Limerick_-_Denmark_Street_%285770797919%29.jpg/1280px-Limerick_-_Denmark_Street_%285770797919%29.jpg'
+  where slug = 'hidden-limerick';

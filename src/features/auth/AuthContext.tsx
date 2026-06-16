@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { Platform } from 'react-native';
 import type { Session } from '@supabase/supabase-js';
 
 import { supabase } from '@/lib/supabase';
@@ -8,6 +9,7 @@ type AuthState = {
   loading: boolean;
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -39,10 +41,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.auth.signUp({ email, password });
       if (error) throw error;
     },
+    async signInWithGoogle() {
+      // Web: redirect to Google, then back to this app (detectSessionInUrl picks up the token).
+      const origin =
+        (globalThis as { location?: { origin: string } }).location?.origin ?? '';
+      const redirectTo =
+        Platform.OS === 'web' ? `${origin}/layered-walks/` : 'layeredwalks://';
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo },
+      });
+      if (error) throw error;
+    },
     async signOut() {
       await supabase.auth.signOut();
     },
-    // TODO(sprint 1): add signInWithOAuth('google' | 'apple') via expo-auth-session.
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
