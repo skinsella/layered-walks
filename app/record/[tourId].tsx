@@ -22,6 +22,16 @@ import {
 import { field } from '@/theme/colors';
 import { fonts } from '@/theme/typography';
 
+/** Supabase errors are plain objects (not Error instances) — surface their message. */
+function errMessage(e: unknown, fallback: string): string {
+  if (e instanceof Error && e.message) return e.message;
+  if (e && typeof e === 'object' && 'message' in e) {
+    const m = (e as { message: unknown }).message;
+    if (m) return String(m);
+  }
+  return fallback;
+}
+
 export default function Record() {
   const router = useRouter();
   const { session } = useAuth();
@@ -66,7 +76,7 @@ export default function Record() {
         setSetup({ userId, tourId });
         setStops(await fetchDraftStops(tourId));
       } catch (e) {
-        setSetupError(e instanceof Error ? e.message : 'Could not start recording.');
+        setSetupError(errMessage(e, 'Could not start recording.'));
       }
     })();
   }, [session]);
@@ -77,7 +87,7 @@ export default function Record() {
     try {
       setCoords(await captureLocation());
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Location failed');
+      setError(errMessage(e, 'Location failed'));
     } finally {
       setBusy(null);
     }
@@ -89,7 +99,7 @@ export default function Record() {
       if (recorder.recording) setAudio(await recorder.stop());
       else await recorder.start();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Recording failed');
+      setError(errMessage(e, 'Recording failed'));
     }
   }
 
@@ -102,7 +112,7 @@ export default function Record() {
         setPhoto(blob);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not add photo');
+      setError(errMessage(e, 'Could not add photo'));
     }
   }
 
@@ -114,21 +124,26 @@ export default function Record() {
       await saveRecordedStop({
         userId: setup.userId,
         tourId: setup.tourId,
-        sequence: stops.length + 1,
         title,
         coords,
         audio,
         photo,
         themeIds: [...lenses],
       });
-      setStops(await fetchDraftStops(setup.tourId));
+      // Reset for the next stop.
       setCoords(null);
       setAudio(null);
       setPhoto(null);
       setTitle('');
       setLenses(new Set());
+      // Refresh the map — a refresh hiccup must not claim the save failed.
+      try {
+        setStops(await fetchDraftStops(setup.tourId));
+      } catch {
+        /* ignore */
+      }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not save stop');
+      setError(errMessage(e, 'Could not save stop'));
     } finally {
       setBusy(null);
     }

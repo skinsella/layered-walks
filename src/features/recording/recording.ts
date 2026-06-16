@@ -97,22 +97,25 @@ export async function uploadMedia(
   return path;
 }
 
-/** Save a recorded stop: audio (+ optional photo) uploaded, stop created via RPC, lenses tagged. */
+/** Save a recorded stop: audio (+ optional photo) uploaded, stop created via RPC, lenses tagged.
+ *  The next stop number is computed from a fresh DB read to avoid sequence collisions. */
 export async function saveRecordedStop(params: {
   userId: string;
   tourId: string;
-  sequence: number;
   title: string;
   coords: Coords;
   audio: Blob;
   photo?: Blob | null;
   themeIds?: string[];
 }): Promise<string> {
+  const existing = await fetchDraftStops(params.tourId);
+  const sequence = existing.reduce((m, s) => Math.max(m, s.sequence), 0) + 1;
+
   const audioPath = await uploadMedia(params.userId, params.tourId, params.audio, 'webm', 'audio/webm');
 
   const { data: stopId, error } = await supabase.rpc('create_stop', {
     p_tour_id: params.tourId,
-    p_sequence: params.sequence,
+    p_sequence: sequence,
     p_title: params.title,
     p_lng: params.coords.lng,
     p_lat: params.coords.lat,
