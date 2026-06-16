@@ -48,6 +48,19 @@ export type Database = {
           d: number;
         }[];
       };
+      create_stop: {
+        Args: {
+          p_tour_id: string;
+          p_sequence: number;
+          p_title: string;
+          p_lng: number;
+          p_lat: number;
+          p_accuracy: number;
+          p_audio_path: string;
+          p_dwell: number;
+        };
+        Returns: string;
+      };
     };
     Enums: {
       tour_status: 'draft' | 'in_review' | 'published' | 'archived';

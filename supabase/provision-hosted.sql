@@ -1,11 +1,7 @@
--- Layered Walks — one-shot provisioning for a HOSTED Supabase project.
--- Paste this whole file into the Supabase dashboard SQL editor and Run.
--- Applies every migration (0001–0012) in order, then the seed.
--- Generated from supabase/migrations/*.sql + supabase/seed.sql.
+-- Layered Walks — one-shot provisioning (migrations 0001–0013 + seed).
+-- Paste into the Supabase SQL editor and Run.
 
--- ═══════════════════════════════════════════════════════════════════════════
--- FILE: migrations/0001_extensions_and_enums.sql
--- ═══════════════════════════════════════════════════════════════════════════
+-- ═══ FILE: migrations/0001_extensions_and_enums.sql ═══
 -- 0001 — extensions + enums
 -- See docs/01-database-schema.md §1.
 
@@ -19,9 +15,7 @@ create type difficulty_level as enum ('easy', 'moderate', 'strenuous');
 create type purchase_status  as enum ('pending', 'completed', 'refunded', 'failed');
 create type payout_status    as enum ('pending', 'in_transit', 'paid', 'failed');
 
--- ═══════════════════════════════════════════════════════════════════════════
--- FILE: migrations/0002_geo_and_taxonomy.sql
--- ═══════════════════════════════════════════════════════════════════════════
+-- ═══ FILE: migrations/0002_geo_and_taxonomy.sql ═══
 -- 0002 — cities, themes, periods (must precede profiles, which FK cities)
 -- See docs/01-database-schema.md §3.
 
@@ -56,9 +50,7 @@ create table periods (
   year_end   integer
 );
 
--- ═══════════════════════════════════════════════════════════════════════════
--- FILE: migrations/0003_identity.sql
--- ═══════════════════════════════════════════════════════════════════════════
+-- ═══ FILE: migrations/0003_identity.sql ═══
 -- 0003 — profiles, preferences, creator_profiles
 -- See docs/01-database-schema.md §2.
 
@@ -95,9 +87,7 @@ create table creator_profiles (
   created_at           timestamptz not null default now()
 );
 
--- ═══════════════════════════════════════════════════════════════════════════
--- FILE: migrations/0004_content.sql
--- ═══════════════════════════════════════════════════════════════════════════
+-- ═══ FILE: migrations/0004_content.sql ═══
 -- 0004 — tours, stops and their tag bridges
 -- See docs/01-database-schema.md §4.
 
@@ -183,9 +173,7 @@ create table stop_periods (
   primary key (stop_id, period_id)
 );
 
--- ═══════════════════════════════════════════════════════════════════════════
--- FILE: migrations/0005_commerce.sql
--- ═══════════════════════════════════════════════════════════════════════════
+-- ═══ FILE: migrations/0005_commerce.sql ═══
 -- 0005 — purchases, payouts
 -- See docs/01-database-schema.md §5.
 
@@ -221,9 +209,7 @@ create table payouts (
   created_at         timestamptz not null default now()
 );
 
--- ═══════════════════════════════════════════════════════════════════════════
--- FILE: migrations/0006_engagement.sql
--- ═══════════════════════════════════════════════════════════════════════════
+-- ═══ FILE: migrations/0006_engagement.sql ═══
 -- 0006 — reviews, saved_tours, tour_progress, tour_downloads
 -- See docs/01-database-schema.md §6.
 
@@ -270,9 +256,7 @@ create table tour_downloads (
   unique (user_id, tour_id)
 );
 
--- ═══════════════════════════════════════════════════════════════════════════
--- FILE: migrations/0007_route_engine.sql
--- ═══════════════════════════════════════════════════════════════════════════
+-- ═══ FILE: migrations/0007_route_engine.sql ═══
 -- 0007 — generated route snapshots (the layered engine output)
 -- See docs/01-database-schema.md §7 and docs/02-architecture.md §4.
 
@@ -293,9 +277,7 @@ create table generated_route_stops (
   primary key (route_id, sequence)
 );
 
--- ═══════════════════════════════════════════════════════════════════════════
--- FILE: migrations/0008_functions_and_triggers.sql
--- ═══════════════════════════════════════════════════════════════════════════
+-- ═══ FILE: migrations/0008_functions_and_triggers.sql ═══
 -- 0008 — functions + triggers (identity bootstrap, updated_at, denorm aggregates,
 -- and the has_purchased() guard used by RLS). See docs/01-database-schema.md §8–9.
 
@@ -388,9 +370,7 @@ create trigger purchases_aggregate
   after insert or update or delete on purchases
   for each row execute function refresh_purchase_aggregates();
 
--- ═══════════════════════════════════════════════════════════════════════════
--- FILE: migrations/0009_rls.sql
--- ═══════════════════════════════════════════════════════════════════════════
+-- ═══ FILE: migrations/0009_rls.sql ═══
 -- 0009 — Row-Level Security. Default deny; explicit policies per table.
 -- See docs/01-database-schema.md §9. Money/trust writes go through Edge Functions
 -- (service role), which bypasses RLS — so several tables intentionally have read-only
@@ -515,9 +495,7 @@ create policy "own generated route stops" on generated_route_stops
     exists (select 1 from generated_routes r where r.id = route_id and r.user_id = auth.uid())
   );
 
--- ═══════════════════════════════════════════════════════════════════════════
--- FILE: migrations/0010_route_candidates.sql
--- ═══════════════════════════════════════════════════════════════════════════
+-- ═══ FILE: migrations/0010_route_candidates.sql ═══
 -- 0010 — route_candidates(): the PostGIS candidate-selection step of the layered
 -- route engine. Called by the `routes-generate` Edge Function (docs/02-architecture.md §4,
 -- step 1). Returns published stops in a city, scored by theme overlap + proximity.
@@ -582,9 +560,7 @@ $$;
 grant execute on function route_candidates(uuid, uuid[], double precision, double precision, integer)
   to anon, authenticated, service_role;
 
--- ═══════════════════════════════════════════════════════════════════════════
--- FILE: migrations/0011_tour_stop_list.sql
--- ═══════════════════════════════════════════════════════════════════════════
+-- ═══ FILE: migrations/0011_tour_stop_list.sql ═══
 -- 0011 — get_tour_stops(): the public itinerary for a PUBLISHED tour.
 -- Returns only NON-sensitive columns (id, sequence, title, preview flag, dwell time) so the
 -- Tour detail page can list the whole itinerary as a sales teaser — while narration_text,
@@ -614,9 +590,7 @@ $$;
 
 grant execute on function get_tour_stops(uuid) to anon, authenticated, service_role;
 
--- ═══════════════════════════════════════════════════════════════════════════
--- FILE: migrations/0012_geo_capture.sql
--- ═══════════════════════════════════════════════════════════════════════════
+-- ═══ FILE: migrations/0012_geo_capture.sql ═══
 -- 0012 — geographic capture for live recording (docs/04 §2b ripples).
 -- Makes a recording's geography first-class: the walked TRACK (not just stop points), and
 -- per-stop GPS accuracy + provenance. On device, Record mode (expo-location) accumulates a
@@ -634,9 +608,64 @@ alter table stops add column if not exists audio_source   text
 -- Spatial index for the track (e.g. "tours whose path passes near here").
 create index if not exists tours_path_gix on tours using gist (path);
 
--- ═══════════════════════════════════════════════════════════════════════════
--- FILE: seed.sql
--- ═══════════════════════════════════════════════════════════════════════════
+-- ═══ FILE: migrations/0013_recording.sql ═══
+-- 0013 — backend for in-app recording: a media storage bucket + a stop-creation RPC.
+
+-- ── Storage bucket for recorded audio + stop photos ──────────────────────────
+insert into storage.buckets (id, name, public)
+values ('tour-media', 'tour-media', true)
+on conflict (id) do nothing;
+
+-- Creators upload into their own folder (path = {uid}/{tourId}/{file}); anyone can read.
+create policy "creators upload own media"
+  on storage.objects for insert to authenticated
+  with check (bucket_id = 'tour-media' and (storage.foldername(name))[1] = auth.uid()::text);
+create policy "public read tour media"
+  on storage.objects for select to public
+  using (bucket_id = 'tour-media');
+create policy "creators update own media"
+  on storage.objects for update to authenticated
+  using (bucket_id = 'tour-media' and (storage.foldername(name))[1] = auth.uid()::text);
+create policy "creators delete own media"
+  on storage.objects for delete to authenticated
+  using (bucket_id = 'tour-media' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- ── create_stop(): insert a recorded stop with a real PostGIS point ──────────
+-- Avoids client-side geography casting. Verifies the caller owns the tour.
+create or replace function create_stop(
+  p_tour_id    uuid,
+  p_sequence   integer,
+  p_title      text,
+  p_lng        double precision,
+  p_lat        double precision,
+  p_accuracy   double precision,
+  p_audio_path text,
+  p_dwell      integer default 120
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare v_id uuid;
+begin
+  if not exists (select 1 from tours where id = p_tour_id and creator_id = auth.uid()) then
+    raise exception 'not your tour';
+  end if;
+  insert into stops (tour_id, creator_id, sequence, title, location,
+                     gps_accuracy_m, audio_path, dwell_time_sec, recorded_at, audio_source)
+  values (p_tour_id, auth.uid(), p_sequence, coalesce(nullif(p_title, ''), 'Untitled stop'),
+          ST_SetSRID(ST_MakePoint(p_lng, p_lat), 4326)::geography,
+          p_accuracy, p_audio_path, p_dwell, now(), 'recorded')
+  returning id into v_id;
+  return v_id;
+end;
+$$;
+
+grant execute on function create_stop(uuid, integer, text, double precision, double precision, double precision, text, integer)
+  to authenticated;
+
+-- ═══ FILE: seed.sql ═══
 -- Seed data for local dev / first launch city. Applied by `supabase db reset`.
 
 -- Launch city: Limerick (centroid near King John's Castle / city centre).
@@ -781,4 +810,12 @@ insert into stop_themes (stop_id, theme_id) values
 ('b1111111-0000-0000-0000-000000000003', (select id from themes where slug = 'economics')),
 ('b1111111-0000-0000-0000-000000000004', (select id from themes where slug = 'history'))
 on conflict do nothing;
+
+-- Cover images — real Limerick photos from Wikimedia Commons (openly licensed).
+update tours set cover_image_url = 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/Limerick_-_63_O%27Connell_Street_-_The_Bank_Restaurant_-_Bar_-_geograph.org.uk_-_3068684.jpg/1280px-Limerick_-_63_O%27Connell_Street_-_The_Bank_Restaurant_-_Bar_-_geograph.org.uk_-_3068684.jpg'
+  where slug = 'economic-transformation';
+update tours set cover_image_url = 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/Street_Scene_with_Residential_Facades_-_Limerick_-_Ireland_%2841725831650%29.jpg/1280px-Street_Scene_with_Residential_Facades_-_Limerick_-_Ireland_%2841725831650%29.jpg'
+  where slug = 'the-georgian-city';
+update tours set cover_image_url = 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/57/Limerick_-_Denmark_Street_%285770797919%29.jpg/1280px-Limerick_-_Denmark_Street_%285770797919%29.jpg'
+  where slug = 'hidden-limerick';
 
