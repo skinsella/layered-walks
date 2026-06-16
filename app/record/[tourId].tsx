@@ -5,8 +5,10 @@ import * as ImagePicker from 'expo-image-picker';
 
 import { FieldScreen } from '@/features/field/FieldScreen';
 import { WalkMap, type GeoPoint, type MapStop } from '@/components/WalkMap';
+import { LensChip } from '@/components/LensChip';
 import { useAuth } from '@/features/auth/AuthContext';
-import { fetchActiveCities } from '@/features/catalog/queries';
+import { fetchActiveCities, fetchThemes } from '@/features/catalog/queries';
+import type { Theme } from '@/types/database';
 import { useAudioRecorder } from '@/features/recording/useAudioRecorder';
 import {
   captureLocation,
@@ -33,8 +35,23 @@ export default function Record() {
   const [title, setTitle] = useState('');
   const [audio, setAudio] = useState<Blob | null>(null);
   const [photo, setPhoto] = useState<Blob | null>(null);
+  const [themes, setThemes] = useState<Theme[]>([]);
+  const [lenses, setLenses] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchThemes().then(setThemes).catch(() => {});
+  }, []);
+
+  function toggleLens(id: string) {
+    setLenses((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   // Prepare a creator profile + draft tour once signed in.
   useEffect(() => {
@@ -102,12 +119,14 @@ export default function Record() {
         coords,
         audio,
         photo,
+        themeIds: [...lenses],
       });
       setStops(await fetchDraftStops(setup.tourId));
       setCoords(null);
       setAudio(null);
       setPhoto(null);
       setTitle('');
+      setLenses(new Set());
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save stop');
     } finally {
@@ -195,6 +214,21 @@ export default function Record() {
         <Pressable style={styles.secondaryBtn} onPress={addPhoto}>
           <Text style={styles.secondaryText}>{photo ? '🖼 Photo added ✓ — change' : '🖼 Add a photo'}</Text>
         </Pressable>
+
+        {/* 5 · Lenses */}
+        <Text style={styles.step}>5 · Tag with lenses (optional)</Text>
+        <View style={styles.lensWrap}>
+          {themes.map((t) => (
+            <LensChip
+              key={t.id}
+              slug={t.slug}
+              label={t.name}
+              icon={t.icon}
+              active={lenses.has(t.id)}
+              onPress={() => toggleLens(t.id)}
+            />
+          ))}
+        </View>
 
         {error && <Text style={styles.error}>{error}</Text>}
 
@@ -288,6 +322,7 @@ const styles = StyleSheet.create({
   recordCore: { width: 46, height: 46, borderRadius: 23, backgroundColor: field.recording },
   recordCoreActive: { width: 28, height: 28, borderRadius: 6 },
   recordHint: { flex: 1, fontFamily: fonts.text, fontSize: 14, color: field.textMuted },
+  lensWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
 
   primary: {
     backgroundColor: field.accent,

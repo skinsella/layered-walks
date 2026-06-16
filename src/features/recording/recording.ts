@@ -97,7 +97,7 @@ export async function uploadMedia(
   return path;
 }
 
-/** Save a recorded stop: audio (+ optional photo) uploaded, stop row created via RPC. */
+/** Save a recorded stop: audio (+ optional photo) uploaded, stop created via RPC, lenses tagged. */
 export async function saveRecordedStop(params: {
   userId: string;
   tourId: string;
@@ -106,6 +106,7 @@ export async function saveRecordedStop(params: {
   coords: Coords;
   audio: Blob;
   photo?: Blob | null;
+  themeIds?: string[];
 }): Promise<string> {
   const audioPath = await uploadMedia(params.userId, params.tourId, params.audio, 'webm', 'audio/webm');
 
@@ -125,31 +126,23 @@ export async function saveRecordedStop(params: {
     const photoPath = await uploadMedia(params.userId, params.tourId, params.photo, 'jpg', 'image/jpeg');
     await (supabase as any).from('stop_images').insert({ stop_id: stopId as string, storage_path: photoPath });
   }
+  if (params.themeIds && params.themeIds.length > 0) {
+    await (supabase as any)
+      .from('stop_themes')
+      .insert(params.themeIds.map((t) => ({ stop_id: stopId as string, theme_id: t })));
+  }
   return stopId as string;
 }
 
-/** Stops already recorded into the draft tour (for the map + list). */
+/** Stops already recorded into the draft tour (with real coordinates via the my_stops RPC). */
 export async function fetchDraftStops(tourId: string): Promise<RecordedStop[]> {
-  const { data, error } = await supabase.rpc('get_tour_stops', { p_tour_id: tourId });
+  const { data, error } = await supabase.rpc('my_stops', { p_tour_id: tourId });
   if (error) throw error;
-  // get_tour_stops returns safe columns but not coordinates; pull coords from the owned rows.
-  const { data: rows } = await supabase
-    .from('stops')
-    .select('id, sequence, title, location')
-    .eq('tour_id', tourId)
-    .order('sequence');
-  return ((rows ?? []) as any[]).map((r) => {
-    // location comes back as GeoJSON-ish or WKB; fall back gracefully.
-    const coords = parseLngLat(r.location);
-    return { id: r.id, sequence: r.sequence, title: r.title, lng: coords.lng, lat: coords.lat };
-  });
-}
-
-/** Best-effort parse of a PostGIS location into {lng,lat}. */
-function parseLngLat(loc: unknown): { lng: number; lat: number } {
-  if (loc && typeof loc === 'object' && 'coordinates' in (loc as any)) {
-    const c = (loc as any).coordinates;
-    return { lng: c[0], lat: c[1] };
-  }
-  return { lng: 0, lat: 0 };
+  return ((data ?? []) as RecordedStop[]).map((r) => ({
+    id: r.id,
+    sequence: r.sequence,
+    title: r.title,
+    lng: r.lng,
+    lat: r.lat,
+  }));
 }

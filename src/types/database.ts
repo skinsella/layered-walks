@@ -61,6 +61,10 @@ export type Database = {
         };
         Returns: string;
       };
+      my_stops: {
+        Args: { p_tour_id: string };
+        Returns: { id: string; sequence: number; title: string; lng: number; lat: number }[];
+      };
     };
     Enums: {
       tour_status: 'draft' | 'in_review' | 'published' | 'archived';
